@@ -50,5 +50,4 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.VITE_MAPS_API_KEY }}
-          branch: gh-pages
           publish_dir: ./dist
