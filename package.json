@@ -1,5 +1,6 @@
 {
   "name": "nwda",
+  "homepage": "https://github.com/seanquijote/nwda",
   "private": true,
   "version": "0.0.1",
   "type": "module",
