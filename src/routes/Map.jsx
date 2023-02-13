@@ -19,9 +19,9 @@ import {
 	VisuallyHidden,
 } from '@chakra-ui/react'
 import { OriginContext } from "../contexts/OriginContext";
+import Ratings from 'react-ratings-declarative';
 import Layer from './Layer'
 import Error from '../Error'
-import Ratings from 'react-ratings-declarative';
 
 const libraries = ['places']
 
@@ -142,26 +142,21 @@ export default function Map() {
 		let mapCurrent = mapRef.current
 		const bounds = mapCurrent.getBounds()
 
-		console.log('INDEX NOT NULL map: ', mapCurrent)
-
 		const service = new window.google.maps.places.PlacesService(mapCurrent).nearbySearch({
 			bounds: bounds,
-			// location: bounds,
-			// radius: bounds,
+			// location: origin,
+			// radius: 15000,
 			keyword: 'cebu',
 			type: ['restaurant']
 		}, (results, status) => {
-			console.log('Test onLoadRestaurants result status: ', { results, status })
 			if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
 				setRestaurants(results)
-				console.log('Test onLoadRestaurants restaurantState: ', restaurants)
 			}
 		})
 	}, [restaurants])
 
 	useEffect(() => {
 		setRestaurants(restaurants)
-		console.log("INDEX useEffect restaurants", restaurants);
 	}, [restaurants]);
 
 	return (
@@ -172,7 +167,8 @@ export default function Map() {
 						<Box className="container">
 							<Box className="layer">
 								<Layer setOrigin={(position) => {
-									removeCircle()
+									// removeCircle()
+									circle.setCenter(position)
 									setOrigin(position)
 									map.panTo(position)
 								}} />
@@ -248,16 +244,17 @@ export default function Map() {
 										<InfoWindow
 											position={selected.geometry.location}
 											onCloseClick={() => {
-												if (directions) {
-													directions.setMap(null)
-													setDestination(null)
-												}
 												setSelected(null);
 											}}
 										>
 											<VStack p={4} spacing={1} align='left' wordBreak='break-word'>
 												<HStack>
-													<Image height='200px' width='200px' mb={2} src={selected.photos[0].getUrl()} alt='Restaurant Images' />
+													{selected.photos !== undefined &&
+														selected.photos.length > 0 &&
+															<Box>
+																<Image height='200px' width='200px' mb={2} src={selected.photos[0].getUrl()} alt='Restaurant Images' />
+															</Box>
+													}
 												</HStack>
 												<HStack>
 													<Text fontSize='xl' as='b'>{selected.name}</Text>
