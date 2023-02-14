@@ -103,17 +103,13 @@ export default function Layer({ setOrigin, setRestaurants }) {
     }
 
     const getLocation = () => {
-        navigator.permissions.query({ name: 'geolocation' }).then(console.log)
-
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(position => {
                 setOrigin({
                     lat: position.coords.latitude,
                     lng: position.coords.longitude,
                 })
-                navigator.permissions.query({ name: 'geolocation' }).then(console.log)
             }, err => {
-                navigator.permissions.query({ name: 'geolocation' }).then(console.log)
                 console.warn(err)
             })
         } else {
@@ -168,10 +164,6 @@ export default function Layer({ setOrigin, setRestaurants }) {
 
                                 /* Check if result rating is greater or equal to the min rating */
                                 if (resultsRating >= minRating) {
-                                    console.log('LAYER filterRating 5 star test: ',{
-                                        min_rating: minRating,
-                                        filter_rating: resultsRating,
-                                    })
                                     filteredResult = results[i]
                                 }
                             }
@@ -181,11 +173,6 @@ export default function Layer({ setOrigin, setRestaurants }) {
 
                                 /* Check if result rating is within the range of the min and max rating */
                                 if (resultsRating >= minRating && resultsRating < maxRating) {
-                                    console.log('LAYER filterRating 1-4 star test: ',{
-                                        min_rating: minRating,
-                                        filter_rating: resultsRating,
-                                        max_rating: maxRating,
-                                    })
                                     filteredResult = results[i]
                                 }
                             }
@@ -219,7 +206,6 @@ export default function Layer({ setOrigin, setRestaurants }) {
 
 					filteredRestaurantResults = [...filteredRestaurantResults, { places: filteredResult, details: details }]
 				}
-				console.log('LAYER Filtered Restaurants: ', filteredRestaurantResults)
 				setRestaurants(filteredRestaurantResults)
 			}
 		})
