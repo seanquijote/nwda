@@ -11,12 +11,15 @@ import {
 import {
 	Box,
 	Container,
-	VStack,
+	Stack,
 	HStack,
 	Text,
 	Image,
 	Spinner,
 	VisuallyHidden,
+	Card,
+	Heading,
+	CardBody,
 } from '@chakra-ui/react'
 import { OriginContext } from "../contexts/OriginContext";
 import Ratings from 'react-ratings-declarative';
@@ -54,6 +57,10 @@ const closeOptions = {
 	fillColor: "#48b787",
 };
 
+const restaurantTypes = ['Fast Casual', 'Fast Food', 'Casual Dining', 'Fine Dining', 'Bar', 'Family Style', 'Buffet', 'Diner'];
+
+const restaurantSpecialties = ['Pizza', 'Lechon', 'Burger', 'Lomi', 'Sushi', 'Chicken', 'Bulalo', 'Pares', 'Pancit Canton', 'Congee']
+
 export default function Map() {
 	const [map, setMap] = useState(null)
 	const [origin, setOrigin] = useState(null);
@@ -63,8 +70,9 @@ export default function Map() {
 	const [selected, setSelected] = useState(null);
 	const [circle, setCircle] = useState(null);
 	const mapRef = useRef()
+
 	const { isLoaded, loadError } = useJsApiLoader({
-		id: 'map',
+		id: 'map-canvas',
 		googleMapsApiKey: import.meta.env.VITE_MAPS_API_KEY,
 		libraries: libraries
 	})
@@ -89,7 +97,8 @@ export default function Map() {
 				}
 				setOrigin(originCoords)
 
-				const bounds = new window.google.maps.LatLngBounds(originCoords);
+				// const bounds = new window.google.maps.LatLngBounds(originCoords);
+
 				map.setZoom(15)
 				map.panTo(originCoords)
 				mapRef.current = map
@@ -113,7 +122,7 @@ export default function Map() {
 		const service = new window.google.maps.DirectionsService();
 		service.route({
 			origin: origin,
-			destination: restaurant.geometry.location,
+			destination: restaurant.places.geometry.location,
 			travelMode: window.google.maps.TravelMode.DRIVING,
 		}, (result, status) => {
 			if (status === "OK" && result) {
@@ -138,19 +147,46 @@ export default function Map() {
 		circle.setMap(null);
 	}
 
-	const onLoadRestaurants = useCallback(function callback(markerClusterer) {
-		let mapCurrent = mapRef.current
-		const bounds = mapCurrent.getBounds()
+	const getRandomInt = (max) => {
+		return Math.floor(Math.random() * max)
+	}
 
-		const service = new window.google.maps.places.PlacesService(mapCurrent).nearbySearch({
-			bounds: bounds,
-			// location: origin,
-			// radius: 15000,
+	const onLoadRestaurants = useCallback(function callback(markerClusterer) {
+		const mapCurrent = mapRef.current
+		const bounds = mapCurrent.getBounds()
+		const location = {
+			lat: mapRef.current.data.map.center.lat(),
+			lng: mapRef.current.data.map.center.lng(),
+		}
+
+		let restaurantResults = []
+		let restaurantTotal = 0
+
+		const service = new window.google.maps.places.PlacesService(mapCurrent)
+		service.nearbySearch({
+			// bounds: bounds,
+			location: location,
+			radius: 15000,
 			keyword: 'cebu',
 			type: ['restaurant']
 		}, (results, status) => {
 			if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
-				setRestaurants(results)
+				for (let i = 0; i < results.length; i++) {
+					const details = {
+						type: restaurantTypes[getRandomInt(restaurantTypes.length)],
+						specialty: restaurantSpecialties[getRandomInt(restaurantSpecialties.length)],
+						analytics: {
+							current_year: {
+								patrons: getRandomInt(1000),
+								revenue: getRandomInt(1000000),
+							}
+						}
+					}
+					restaurantTotal++
+					restaurantResults = [...restaurantResults, { places: results[i], details: details }]
+				}
+				setRestaurants(restaurantResults)
+				console.log('Restaurants: ', restaurantResults)
 			}
 		})
 	}, [restaurants])
@@ -167,10 +203,14 @@ export default function Map() {
 						<Box className="container">
 							<Box className="layer">
 								<Layer setOrigin={(position) => {
-									// removeCircle()
-									circle.setCenter(position)
 									setOrigin(position)
-									map.panTo(position)
+									if (circle) circle.setCenter(position)
+									if (map) {
+										map.panTo(position)
+									} else {
+										mapRef.current.setZoom(15)
+										mapRef.current.panTo(position)
+									}
 								}} />
 							</Box>
 							<Box className="map">
@@ -212,21 +252,15 @@ export default function Map() {
 													restaurants &&
 													restaurants.map((restaurant) => (
 														<Marker
-															key={restaurant.place_id}
-															position={restaurant.geometry.location}
+															key={restaurant.places.place_id}
+															position={restaurant.places.geometry.location}
 															clusterer={clusterer}
 															onClick={() => {
 																fetchDirections(restaurant);
 																setSelected(restaurant);
-
-																if (directions) {
-																	directions.setMap(null)
-																	setDestination(null)
-																}
 															}}
 														/>
-													)
-													)
+													))
 												}
 											</MarkerClusterer>
 
@@ -240,76 +274,98 @@ export default function Map() {
 										</>
 									)}
 
-									{selected ? (
+									{selected && (
 										<InfoWindow
-											position={selected.geometry.location}
+											position={selected.places.geometry.location}
 											onCloseClick={() => {
 												setSelected(null);
 											}}
 										>
-											<VStack p={4} spacing={1} align='left' wordBreak='break-word'>
-												<HStack>
-													{selected.photos !== undefined &&
-														selected.photos.length > 0 &&
-															<Box>
-																<Image height='200px' width='200px' mb={2} src={selected.photos[0].getUrl()} alt='Restaurant Images' />
-															</Box>
-													}
-												</HStack>
-												<HStack>
-													<Text fontSize='xl' as='b'>{selected.name}</Text>
-												</HStack>
-												{selected.rating
-													? (
-														<HStack>
-															<Text fontSize='md'>{selected.rating}</Text>
-															<Ratings
-																rating={selected.rating}
-																widgetRatedColors='orange'
-																widgetDimensions='15px'
-																widgetSpacings='2px'
-															>
-																<Ratings.Widget />
-																<Ratings.Widget />
-																<Ratings.Widget />
-																<Ratings.Widget />
-																<Ratings.Widget />
-															</Ratings>
-															<Text fontSize='md'>{`(${selected.user_ratings_total})`}</Text>
+											<Card direction={{ base: 'column', sm: 'row' }} p={2} ml={-4}>
+												<Stack>
+													<CardBody>
+														<Heading size='md'>{selected.places.name}</Heading>
+														{selected.places.rating
+															? (
+																<HStack my={1}>
+																	<Text fontSize='md'>{selected.places.rating}</Text>
+																	<Ratings
+																		rating={selected.places.rating}
+																		widgetRatedColors='orange'
+																		widgetDimensions='15px'
+																		widgetSpacings='2px'
+																	>
+																		<Ratings.Widget />
+																		<Ratings.Widget />
+																		<Ratings.Widget />
+																		<Ratings.Widget />
+																		<Ratings.Widget />
+																	</Ratings>
+																	<Text fontSize='md'>{`(${selected.places.user_ratings_total})`}</Text>
+																	{selected.places.opening_hours.isOpen()
+																		? <Text fontSize='md' color='green'>Open</Text>
+																		: <Text fontSize='md' color='red'>Closed</Text>
+																	}
+																</HStack>
+															)
+															: (
+																<HStack my={1}>
+																	<Text fontSize='md'>No reviews</Text>
+																</HStack>
+															)
+														}
+														<HStack mb={2}>
+															{selected.places.plus_code &&
+																selected.places.plus_code.compound_code
+																? (
+																	<Text fontSize='sm'>{selected.places.plus_code.compound_code} · </Text>
+																)
+																: (<></>)}
+															<Text fontSize='sm'>{selected.places.vicinity}</Text>
 														</HStack>
-													)
-													: (
-														<HStack>
-															<Text fontSize='md'>No reviews</Text>
+														<HStack mb={1}>
+															<Text fontSize='sm'>Type: {selected.details.type}</Text>
 														</HStack>
-													)
+														<HStack mb={1}>
+															<Text fontSize='sm'>Specialty: {selected.details.specialty}</Text>
+														</HStack>
+														<HStack mb={1}>
+															<Text fontSize='sm'>Patrons: {new Intl.NumberFormat().format(selected.details.analytics.current_year.patrons)}</Text>
+														</HStack>
+														<HStack>
+															<Text fontSize='sm'>Revenue: ₱ {new Intl.NumberFormat().format(selected.details.analytics.current_year.revenue)}</Text>
+														</HStack>
+													</CardBody>
+												</Stack>
+												{selected.places.photos !== undefined &&
+													selected.places.photos.length > 0 &&
+													<Box>
+														<Image
+															objectFit='cover'
+															height='200px'
+															width='200px'
+															src={selected.places.photos[0].getUrl()}
+															alt='Restaurant Images'
+														/>
+													</Box>
 												}
-												<HStack>
-													{selected.plus_code &&
-														selected.plus_code.compound_code
-														? (
-															<Text fontSize='sm'>{selected.plus_code.compound_code} · </Text>
-														)
-														: (<></>)}
-													<Text fontSize='sm'>{selected.vicinity}</Text>
-											</HStack>
-										</VStack>
+											</Card>
 										</InfoWindow>
-									) : null}
-							</GoogleMap>
+									)}
+								</GoogleMap>
+							</Box>
 						</Box>
-						</Box>
-			)
-			: (
-			<Container centerContent>
-				<Spinner thickness='4px' color='blue.500' emptyColor='gray.200' size='lg' my={500}>
-					<VisuallyHidden>Loading...</VisuallyHidden>
-				</Spinner>
-			</Container>
-			)
+					)
+					: (
+						<Container centerContent>
+							<Spinner thickness='4px' color='blue.500' emptyColor='gray.200' size='lg' my={500}>
+								<VisuallyHidden>Loading...</VisuallyHidden>
+							</Spinner>
+						</Container>
+					)
 				}
-			{loadError && <Error />}
-		</OriginContext.Provider>
+				{loadError && <Error />}
+			</OriginContext.Provider>
 		</>
 	);
 }

@@ -23,12 +23,12 @@ import {
     RadioGroup,
     Radio,
     Icon,
+    Button,
 } from '@chakra-ui/react'
-import { StarIcon } from '@chakra-ui/icons'
 import { MdRestaurant } from 'react-icons/md'
-import { OriginContext } from "../contexts/OriginContext";
-import useOnclickOutside from "react-cool-onclickoutside";
-import Ratings from 'react-ratings-declarative';
+import { ImCompass2 } from 'react-icons/im'
+import { OriginContext } from "../contexts/OriginContext"
+import useOnclickOutside from "react-cool-onclickoutside"
 
 const restaurantTypes = ['restaurant']
 const countryRegionCode = 'ph'
@@ -47,7 +47,7 @@ export default function Layer({ setOrigin }) {
             location: origin,
             bounds: bounds,
             radius: 20000,
-            types: restaurantTypes,
+            // types: restaurantTypes,
             componentRestrictions: { country: countryRegionCode },
             region: countryRegionCode,
         }
@@ -94,6 +94,21 @@ export default function Layer({ setOrigin }) {
         })
     }
 
+    const getLocation = () => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(position => {
+                setOrigin({
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                })
+            }, err => {
+                console.warn(err)
+            })
+        } else {
+            alert('Geolocation is not supported.')
+        }
+    }
+
     const renderAddress = () => {
         clearSuggestions()
 
@@ -112,7 +127,16 @@ export default function Layer({ setOrigin }) {
             <Grid>
                 <Text fontSize='3xl' as='b'>Hungry?</Text>
                 <FormControl>
-                    {/* TODO Add 1 input for current/origin address. Integrate with GMap Geocode API */}
+                    <Button 
+                        colorScheme='blue' 
+                        width='100%' 
+                        leftIcon={<ImCompass2 />} 
+                        my={3} 
+                        onClick={getLocation}
+                    >
+                        Detect your current location
+                    </Button>
+                    <Text className="line-through" mb={7}><span>or</span></Text>
                     <Popover
                         autoFocus={false}
                         returnFocusOnClose={true}
@@ -127,9 +151,9 @@ export default function Layer({ setOrigin }) {
                                 value={value}
                                 onChange={handleInput}
                                 isDisabled={!ready}
-                                placeholder='Search for a restaurant (origin)'
+                                placeholder='Search for your current location'
                                 variant='filled'
-                                my={5}
+                                mb={5}
                             />
                         </PopoverTrigger>
                         {status === "OK" &&
